@@ -1,43 +1,51 @@
-'use strict';
+const Sequelize = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+//const User = require("./user");
+//const Post = require("./post");
+//const Hashtag = require("./hashtag");
+const env = process.env.NODE_ENV || "development";
+const config = require("../config/config")[env];
 const db = {};
+const sequelize = new Sequelize(
+  config.database,
+  config.username,
+  config.password,
+  config
+);
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
-}
+db.sequelize = sequelize;
+/*
+db.User = User;
+db.Post = Post;
+db.Hashtag = Hashtag;
+User.initiate(sequelize);
+Post.initiate(sequelize);
+Hashtag.initiate(sequelize);
+User.associate(db);
+Post.associate(db);
+Hashtag.associate(db);
+*/
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
+const basename = path.basename(__filename);
+
+fs.readdirSync(__dirname)
+  .filter((file) => {
     return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
+      file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js"
     );
   })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+  .forEach((file) => {
+    const model = require(path.join(__dirname, file));
     db[model.name] = model;
+    //initiate먼저 하고 associate를 설정할 수 있다.
+    model.initiate(sequelize);
   });
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
+Object.keys(db).forEach((modelName) => {
+  if (db[modelName.associate]) {
     db[modelName].associate(db);
   }
 });
-
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
-
 module.exports = db;
