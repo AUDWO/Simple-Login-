@@ -5,13 +5,21 @@ const path = require("path");
 const session = require("express-session");
 const nunjucks = require("nunjucks");
 const dotenv = require("dotenv");
+const passport = require("passport");
+const { sequelize } = require("./models");
 
 //dotenv.config()가 실행되기 전에는 process.env.COOKIE_SECRET이 존재하지 않음
 dotenv.config(); //process.env;
 
 const pageRouter = require("./routes/page");
+const authRouter = require("./routes/auth");
+const userRouter = require("./routes/user");
+const postRouter = require("./routes/post");
+const passportConfig = require("./passport");
 
+//--------------------------------------------------------------
 const app = express();
+passportConfig();
 app.set("port", process.env.PORT || 8001);
 app.set("view engine", "html");
 nunjucks.configure("views", {
@@ -19,10 +27,22 @@ nunjucks.configure("views", {
   watch: true,
 });
 
+sequelize
+  .sync({ force: false })
+  .then(() => {
+    console.log("데이터베이스 연결 성공");
+  })
+  .catch((err) => {
+    console.error(err);
+  });
+
 app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use("/img", express.static(path.join(__dirname, "uploads")));
+app.use(express.json()); //req.body를 ajax json요총으로부터 req.body를 생성해줌
+app.use(express.urlencoded({ extended: false })); //req.body 폼으로부터 req.body를 생성해준다
+app.use(cookieParser(process.env.COOKIE_SECRET)); // {connect.sid:12345134} 생성
+app.use(passport.initialize()); //req.user, req.login, req.isAuthenticate, req.logout등이 생겨남
 app.use(
   session({
     resave: false,
@@ -34,7 +54,14 @@ app.use(
   })
 );
 
+app.use(passport.session()); //connect.sid라는 이름으로 세션 쿠키가 브라우저로 전동
+//브라우저 connect.sid = 1234
+
 app.use("/", pageRouter);
+app.use("/auth", authRouter);
+app.use("/post", postRouter);
+app.use("/user", userRouter);
+
 app.use((req, res, next) => {
   const error = new Error(`${req.method} ${req.url} 라우터가 없습니다.`);
   error.status = 404;
